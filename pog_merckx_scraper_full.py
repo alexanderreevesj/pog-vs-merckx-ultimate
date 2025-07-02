@@ -97,8 +97,9 @@ def get_pogacar_data():
         "worlds": scrape_worlds("tadej-pogacar"),
     }
 
-def get_comparison_data():
+def combine_data(pogacar_data, merckx_data):
     return {
-        "pogacar": get_pogacar_data(),
-        "merckx": get_merckx_data()
+        "pogacar": pogacar_data,
+        "merckx": merckx_data
     }
+
