@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pog_merckx_scraper_full import (
     get_pogacar_data,
-    get_merckx_data,  # FIXED THIS LINE
+    get_merckx_data,
     combine_data,
 )
 import time
@@ -20,7 +20,7 @@ cached_merckx = get_merckx_data()
 
 cached_pogacar = None
 last_fetch_time = 0
-POGACAR_CACHE_DURATION = 60 * 60 * 24  # 24 hours
+POGACAR_CACHE_DURATION = 60 * 60 * 12  # 12 hours
 
 @app.get("/api/pog-vs-merckx")
 def get_pog_merckx():
@@ -37,4 +37,5 @@ def get_pog_merckx():
                 return {"error": "Failed to load Pogacar data and no cache available"}
 
     return combine_data(cached_pogacar, cached_merckx)
+
 
