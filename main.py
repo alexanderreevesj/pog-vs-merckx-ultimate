@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-cached_merckx = get_merckx_data()
+cached_merckx = get_merckx_data()  # Load once
 
 cached_pogacar = None
 last_fetch_time = 0
@@ -37,5 +37,4 @@ def get_pog_merckx():
                 return {"error": "Failed to load Pogacar data and no cache available"}
 
     return combine_data(cached_pogacar, cached_merckx)
-
 
