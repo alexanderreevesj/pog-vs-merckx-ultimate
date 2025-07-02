@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from functools import lru_cache
 
 def scrape_total_wins(rider_slug):
     url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/wins"
@@ -102,6 +103,17 @@ def scrape_worlds(rider_slug):
         "top10_%": round(top10s / starts * 100, 1) if starts else 0,
     }
 
+# Cache Merckx data
+@lru_cache(maxsize=1)
+def get_merckx_data():
+    return {
+        "total_wins": scrape_total_wins("eddy-merckx"),
+        "grand_tours": scrape_grand_tours("eddy-merckx"),
+        "monuments": scrape_monuments("eddy-merckx"),
+        "worlds": scrape_worlds("eddy-merckx"),
+    }
+
+# Compare
 def get_comparison_data():
     pogacar = {
         "total_wins": scrape_total_wins("tadej-pogacar"),
@@ -109,13 +121,9 @@ def get_comparison_data():
         "monuments": scrape_monuments("tadej-pogacar"),
         "worlds": scrape_worlds("tadej-pogacar"),
     }
-    merckx = {
-        "total_wins": scrape_total_wins("eddy-merckx"),
-        "grand_tours": scrape_grand_tours("eddy-merckx"),
-        "monuments": scrape_monuments("eddy-merckx"),
-        "worlds": scrape_worlds("eddy-merckx"),
-    }
+    merckx = get_merckx_data()
     return {
         "pogacar": pogacar,
         "merckx": merckx
     }
+
