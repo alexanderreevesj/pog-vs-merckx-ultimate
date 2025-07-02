@@ -1,51 +1,58 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pog_merckx_scraper_full import (
+import os
+import time
+import json
+from pog_v_merckx_ultimate import (
     scrape_total_wins,
     scrape_grand_tours,
     scrape_monuments,
     scrape_worlds,
 )
-import time
 
-app = FastAPI()
+MERCKX_CACHE = "merckx_data.json"
+POGACAR_CACHE = "pogacar_data.json"
+POGACAR_CACHE_TTL = 60 * 60 * 12  # 12 hours
 
-# CORS for frontend app
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def load_cache(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return None
 
-# Cached Merckx data (scraped only once)
-merckx_data = {
-    "total_wins": scrape_total_wins("eddy-merckx"),
-    "grand_tours": scrape_grand_tours("eddy-merckx"),
-    "monuments": scrape_monuments("eddy-merckx"),
-    "worlds": scrape_worlds("eddy-merckx"),
-}
+def save_cache(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f)
 
-# Cached Pogacar data (refreshed once per day)
-cached_pogacar = None
-last_pogacar_fetch = 0
-CACHE_DURATION = 60 * 60 * 24  # 1 day
+def get_merckx_data():
+    cached = load_cache(MERCKX_CACHE)
+    if cached:
+        return cached
 
-@app.get("/api/pog-vs-merckx")
-def get_pog_vs_merckx():
-    global cached_pogacar, last_pogacar_fetch
+    data = {
+        "total_wins": scrape_total_wins("eddy-merckx"),
+        "grand_tours": scrape_grand_tours("eddy-merckx"),
+        "monuments": scrape_monuments("eddy-merckx"),
+        "worlds": scrape_worlds("eddy-merckx"),
+    }
+    save_cache(MERCKX_CACHE, data)
+    return data
 
-    now = time.time()
-    if cached_pogacar is None or (now - last_pogacar_fetch) > CACHE_DURATION:
-        cached_pogacar = {
-            "total_wins": scrape_total_wins("tadej-pogacar"),
-            "grand_tours": scrape_grand_tours("tadej-pogacar"),
-            "monuments": scrape_monuments("tadej-pogacar"),
-            "worlds": scrape_worlds("tadej-pogacar"),
-        }
-        last_pogacar_fetch = now
+def get_pogacar_data():
+    if os.path.exists(POGACAR_CACHE):
+        mtime = os.path.getmtime(POGACAR_CACHE)
+        if time.time() - mtime < POGACAR_CACHE_TTL:
+            return load_cache(POGACAR_CACHE)
 
+    data = {
+        "total_wins": scrape_total_wins("tadej-pogacar"),
+        "grand_tours": scrape_grand_tours("tadej-pogacar"),
+        "monuments": scrape_monuments("tadej-pogacar"),
+        "worlds": scrape_worlds("tadej-pogacar"),
+    }
+    save_cache(POGACAR_CACHE, data)
+    return data
+
+def get_comparison_data():
     return {
-        "pogacar": cached_pogacar,
-        "merckx": merckx_data
+        "pogacar": get_pogacar_data(),
+        "merckx": get_merckx_data()
     }
