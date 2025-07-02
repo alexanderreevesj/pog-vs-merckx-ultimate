@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 import re
 import json
 import os
@@ -56,7 +55,7 @@ class CyclingStatsScraper:
         
         return date_of_birth, nationality, place_of_birth
 
-    def scrape_total_wins(self, rider_slug: str) -> List[Tuple]:
+    def scrape_total_wins(self, rider_slug: str) -> List[Dict]:
         """Scrape all wins with details"""
         url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/wins"
         response = requests.get(url, headers=self.headers)
@@ -71,16 +70,17 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 5:
-                        nr = columns[0].text.strip()
-                        race = columns[1].text.strip()
-                        race_class = columns[2].text.strip()
-                        date = columns[3].text.strip()
-                        category = columns[4].text.strip()
-                        wins_list.append((nr, race, race_class, date, category))
+                        wins_list.append({
+                            'nr': columns[0].text.strip(),
+                            'race': columns[1].text.strip(),
+                            'class': columns[2].text.strip(),
+                            'date': columns[3].text.strip(),
+                            'category': columns[4].text.strip()
+                        })
         
         return wins_list
 
-    def scrape_monument_results(self, rider_slug: str) -> List[Tuple]:
+    def scrape_monument_results(self, rider_slug: str) -> List[Dict]:
         """Scrape monument results"""
         url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/top-classic-results"
         response = requests.get(url, headers=self.headers)
@@ -95,16 +95,17 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 4:
-                        nr = columns[0].text.strip()
-                        season = columns[1].text.strip()
-                        classic = columns[2].text.strip()
-                        result = columns[3].text.strip()
-                        classic = self.standardize_race_name(classic)
-                        monument_results.append((nr, season, classic, result))
+                        classic = self.standardize_race_name(columns[2].text.strip())
+                        monument_results.append({
+                            'nr': columns[0].text.strip(),
+                            'season': columns[1].text.strip(),
+                            'classic': classic,
+                            'result': columns[3].text.strip()
+                        })
         
         return monument_results
 
-    def scrape_grand_tour_results(self, rider_slug: str) -> List[Tuple]:
+    def scrape_grand_tour_results(self, rider_slug: str) -> List[Dict]:
         """Scrape Grand Tour participations"""
         url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/grand-tour-starts"
         response = requests.get(url, headers=self.headers)
@@ -119,19 +120,21 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 7:
-                        nr = columns[0].text.strip()
-                        season = columns[1].text.strip()
                         grand_tour = self.standardize_grand_tour_name(columns[2].text.strip())
-                        gc = columns[3].text.strip()
-                        points = columns[4].text.strip()
-                        mountains = columns[5].text.strip()
-                        youth = columns[6].text.strip()
-                        best_stage = columns[7].text.strip() if len(columns) > 7 else ""
-                        grand_tour_results.append((nr, season, grand_tour, gc, points, mountains, youth, best_stage))
+                        grand_tour_results.append({
+                            'nr': columns[0].text.strip(),
+                            'season': columns[1].text.strip(),
+                            'grand_tour': grand_tour,
+                            'gc': columns[3].text.strip(),
+                            'points': columns[4].text.strip(),
+                            'mountains': columns[5].text.strip(),
+                            'youth': columns[6].text.strip(),
+                            'best_stage': columns[7].text.strip() if len(columns) > 7 else ""
+                        })
         
         return grand_tour_results
 
-    def scrape_world_championships_results(self, rider_slug: str) -> List[Tuple]:
+    def scrape_world_championships_results(self, rider_slug: str) -> List[Dict]:
         """Scrape World Championships results"""
         url = f"https://www.procyclingstats.com/rider.php?xseason=&zxseason=&pxseason=equal&sort=date&race=1021&km1=&zkm1=&pkm1=equal&limit=100&xoffset=0&topx=&ztopx=&ptopx=smallerorequal&znation=&type=&continent=&pnts=&zpnts=&ppnts=largerorequal&level=&rnk=&zrnk=&prnk=equal&exclude_tt=0&racedate=&zracedate=&pracedate=equal&name=&pname=contains&category=&profile_score=&zprofile_score=&pprofile_score=largerorequal&exclude_gcs=0&vert_meters=&zvert_meters=&pvert_meters=largerorequal&uci_pnt=&zuci_pnt=&puci_pnt=largerorequal&filter=Filter&id={rider_slug}&p=results"
         response = requests.get(url, headers=self.headers)
@@ -146,20 +149,21 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 9 and columns[0].text.strip().isdigit():
-                        nr = columns[0].text.strip()
-                        date = columns[1].text.strip()
-                        result = columns[2].text.strip()
-                        race = columns[3].text.strip()
-                        race_class = columns[4].text.strip()
-                        kms = columns[5].text.strip()
-                        pcs_points = columns[6].text.strip()
-                        uci_points = columns[7].text.strip()
-                        vert_mtr = columns[8].text.strip()
-                        wc_results.append((nr, date, result, race, race_class, kms, pcs_points, uci_points, vert_mtr))
+                        wc_results.append({
+                            'nr': columns[0].text.strip(),
+                            'date': columns[1].text.strip(),
+                            'result': columns[2].text.strip(),
+                            'race': columns[3].text.strip(),
+                            'class': columns[4].text.strip(),
+                            'kms': columns[5].text.strip(),
+                            'pcs_points': columns[6].text.strip(),
+                            'uci_points': columns[7].text.strip(),
+                            'vert_mtr': columns[8].text.strip()
+                        })
         
         return wc_results
 
-    def scrape_season_statistics(self, rider_slug: str) -> List[Tuple]:
+    def scrape_season_statistics(self, rider_slug: str) -> List[Dict]:
         """Scrape season statistics"""
         url = f"https://www.procyclingstats.com/rider.php?proresults=0&proresults=1&pproresults=largerorequal&stage_type=&filter=Filter&id={rider_slug}&p=statistics&s=season-statistics"
         response = requests.get(url, headers=self.headers)
@@ -174,18 +178,19 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 7 and columns[0].text.strip():
-                        season = columns[0].text.strip()
-                        points = columns[1].text.strip()
-                        racedays = columns[2].text.strip()
-                        kms = columns[3].text.strip()
-                        wins = columns[4].text.strip()
-                        top_3s = columns[5].text.strip()
-                        top_10s = columns[6].text.strip()
-                        season_statistics.append((season, points, racedays, kms, wins, top_3s, top_10s))
+                        season_statistics.append({
+                            'season': columns[0].text.strip(),
+                            'points': columns[1].text.strip(),
+                            'racedays': columns[2].text.strip(),
+                            'kms': columns[3].text.strip(),
+                            'wins': columns[4].text.strip(),
+                            'top_3s': columns[5].text.strip(),
+                            'top_10s': columns[6].text.strip()
+                        })
         
         return season_statistics
 
-    def scrape_leader_jerseys(self, rider_slug: str) -> List[Tuple]:
+    def scrape_leader_jerseys(self, rider_slug: str) -> List[Dict]:
         """Scrape Grand Tour leader jerseys"""
         url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/grandtour-leader-jerseys"
         response = requests.get(url, headers=self.headers)
@@ -200,14 +205,15 @@ class CyclingStatsScraper:
                 for row in rows:
                     columns = row.find_all('td')
                     if len(columns) >= 3:
-                        year = columns[0].text.strip()
-                        race = columns[1].text.strip()
-                        total_days = int(columns[2].text.strip()) if columns[2].text.strip().isdigit() else 0
-                        gc_days = int(columns[3].text.strip()) if len(columns) > 3 and columns[3].text.strip().isdigit() else 0
-                        points_days = int(columns[4].text.strip()) if len(columns) > 4 and columns[4].text.strip().isdigit() else 0
-                        kom_days = int(columns[5].text.strip()) if len(columns) > 5 and columns[5].text.strip().isdigit() else 0
-                        youth_days = int(columns[6].text.strip()) if len(columns) > 6 and columns[6].text.strip().isdigit() else 0
-                        leader_jersey_data.append((year, race, total_days, gc_days, points_days, kom_days, youth_days))
+                        leader_jersey_data.append({
+                            'year': columns[0].text.strip(),
+                            'race': columns[1].text.strip(),
+                            'total': int(columns[2].text.strip()) if columns[2].text.strip().isdigit() else 0,
+                            'gc': int(columns[3].text.strip()) if len(columns) > 3 and columns[3].text.strip().isdigit() else 0,
+                            'points': int(columns[4].text.strip()) if len(columns) > 4 and columns[4].text.strip().isdigit() else 0,
+                            'kom': int(columns[5].text.strip()) if len(columns) > 5 and columns[5].text.strip().isdigit() else 0,
+                            'youth': int(columns[6].text.strip()) if len(columns) > 6 and columns[6].text.strip().isdigit() else 0
+                        })
         
         return leader_jersey_data
 
@@ -239,42 +245,52 @@ class CyclingStatsScraper:
                 return standard_name
         return tour_name
 
-    def calculate_career_metrics(self, wins_list, season_statistics, grand_tour_results, 
-                               monument_results, leader_jersey_data) -> Dict:
-        """Calculate comprehensive career metrics"""
-        
-        # Convert lists to DataFrames for easier processing
-        season_statistics_df = pd.DataFrame(season_statistics, 
-                                          columns=['Season', 'Points', 'Racedays', 'KMs', 'Wins', 'Top-3s', 'Top-10s'])
-        grand_tours_df = pd.DataFrame(grand_tour_results, 
-                                    columns=['Nr', 'Season', 'Grand Tour', 'GC', 'Points', 'Mountains', 'Youth', 'Best Stage'])
-        monuments_df = pd.DataFrame(monument_results, 
-                                  columns=['Nr', 'Season', 'Classic', 'Result'])
-        leader_jersey_df = pd.DataFrame(leader_jersey_data, 
-                                      columns=['Year', 'Race', 'Total', 'GC', 'Points', 'KOM', 'Youth'])
+    def safe_int(self, value: str) -> int:
+        """Safely convert string to int"""
+        try:
+            return int(value) if value.isdigit() else 0
+        except:
+            return 0
 
+    def safe_float(self, value: str) -> float:
+        """Safely convert string to float"""
+        try:
+            return float(value)
+        except:
+            return 0.0
+
+    def calculate_career_metrics(self, wins_list: List[Dict], season_statistics: List[Dict], 
+                               grand_tour_results: List[Dict], monument_results: List[Dict], 
+                               leader_jersey_data: List[Dict]) -> Dict:
+        """Calculate comprehensive career metrics without pandas"""
+        
         # Basic career metrics
-        races_participated = pd.to_numeric(season_statistics_df['Racedays'], errors='coerce').fillna(0).astype(int).sum()
+        races_participated = sum(self.safe_int(stat['racedays']) for stat in season_statistics)
         races_won = len(wins_list)
         win_percentage = (races_won / races_participated) * 100 if races_participated > 0 else 0
-        races_podiumed = pd.to_numeric(season_statistics_df['Top-3s'], errors='coerce').fillna(0).astype(int).sum()
+        
+        races_podiumed = sum(self.safe_int(stat['top_3s']) for stat in season_statistics)
         podium_percentage = (races_podiumed / races_participated) * 100 if races_participated > 0 else 0
-        races_top_10 = pd.to_numeric(season_statistics_df['Top-10s'], errors='coerce').fillna(0).astype(int).sum()
+        
+        races_top_10 = sum(self.safe_int(stat['top_10s']) for stat in season_statistics)
         top_10_percentage = (races_top_10 / races_participated) * 100 if races_participated > 0 else 0
-        pro_seasons = len(season_statistics_df['Season'].unique())
+        
+        pro_seasons = len(set(stat['season'] for stat in season_statistics if stat['season']))
 
         # Grand Tour metrics
-        grand_tours_started = len(grand_tours_df)
-        grand_tours_won = len(grand_tours_df[grand_tours_df['GC'] == '1'])
+        grand_tours_started = len(grand_tour_results)
+        grand_tours_won = len([gt for gt in grand_tour_results if gt['gc'] == '1'])
         grand_tours_win_percentage = (grand_tours_won / grand_tours_started) * 100 if grand_tours_started > 0 else 0
-        grand_tours_podiums = len(grand_tours_df[grand_tours_df['GC'].isin(['1', '2', '3'])])
+        
+        grand_tours_podiums = len([gt for gt in grand_tour_results if gt['gc'] in ['1', '2', '3']])
         grand_tours_podium_percentage = (grand_tours_podiums / grand_tours_started) * 100 if grand_tours_started > 0 else 0
-        grand_tours_top_10s = len(grand_tours_df[grand_tours_df['GC'].apply(lambda x: str(x).isdigit() and int(x) <= 10)])
+        
+        grand_tours_top_10s = len([gt for gt in grand_tour_results if gt['gc'].isdigit() and int(gt['gc']) <= 10])
         grand_tours_top_10_percentage = (grand_tours_top_10s / grand_tours_started) * 100 if grand_tours_started > 0 else 0
         
         # Extract stage wins
         def extract_stage_wins(text):
-            if pd.isna(text):
+            if not text:
                 return 0
             match = re.search(r'1\s*\((\d+)x\)', text)
             if match:
@@ -283,16 +299,18 @@ class CyclingStatsScraper:
                 return 1
             return 0
 
-        stage_wins_in_grand_tours = grand_tours_df['Best Stage'].apply(extract_stage_wins).sum()
-        total_gc_days_in_leader_jersey = leader_jersey_df['GC'].sum()
+        stage_wins_in_grand_tours = sum(extract_stage_wins(gt['best_stage']) for gt in grand_tour_results)
+        total_gc_days_in_leader_jersey = sum(jersey['gc'] for jersey in leader_jersey_data)
 
         # Monument metrics
-        monuments_started = len(monuments_df)
-        monuments_won = len(monuments_df[monuments_df['Result'] == '1'])
+        monuments_started = len(monument_results)
+        monuments_won = len([m for m in monument_results if m['result'] == '1'])
         monuments_win_percentage = (monuments_won / monuments_started) * 100 if monuments_started > 0 else 0
-        monuments_podiums = len(monuments_df[monuments_df['Result'].isin(['1', '2', '3'])])
+        
+        monuments_podiums = len([m for m in monument_results if m['result'] in ['1', '2', '3']])
         monuments_podium_percentage = (monuments_podiums / monuments_started) * 100 if monuments_started > 0 else 0
-        monuments_top_10s = len(monuments_df[monuments_df['Result'].apply(lambda x: str(x).isdigit() and int(x) <= 10)])
+        
+        monuments_top_10s = len([m for m in monument_results if m['result'].isdigit() and int(m['result']) <= 10])
         monuments_top_10_percentage = (monuments_top_10s / monuments_started) * 100 if monuments_started > 0 else 0
 
         return {
@@ -354,15 +372,14 @@ class CyclingStatsScraper:
             },
             'career_metrics': career_metrics,
             'detailed_data': {
-                'total_wins': [dict(zip(['nr', 'race', 'class', 'date', 'category'], win)) for win in wins_list],
-                'monument_results': [dict(zip(['nr', 'season', 'classic', 'result'], result)) for result in monument_results],
-                'grand_tour_results': [dict(zip(['nr', 'season', 'grand_tour', 'gc', 'points', 'mountains', 'youth', 'best_stage'], result)) for result in grand_tour_results],
-                'world_championships_results': [dict(zip(['nr', 'date', 'result', 'race', 'class', 'kms', 'pcs_points', 'uci_points', 'vert_mtr'], result)) for result in world_championships_results],
-                'season_statistics': [dict(zip(['season', 'points', 'racedays', 'kms', 'wins', 'top_3s', 'top_10s'], stat)) for stat in season_statistics],
-                'leader_jersey_data': [dict(zip(['year', 'race', 'total', 'gc', 'points', 'kom', 'youth'], jersey)) for jersey in leader_jersey_data]
+                'total_wins': wins_list,
+                'monument_results': monument_results,
+                'grand_tour_results': grand_tour_results,
+                'world_championships_results': world_championships_results,
+                'season_statistics': season_statistics,
+                'leader_jersey_data': leader_jersey_data
             }
         }
         
         print(f"Completed comprehensive scrape for {rider_name}")
         return complete_data
-
