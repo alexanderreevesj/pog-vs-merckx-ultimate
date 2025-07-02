@@ -1,58 +1,45 @@
-import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pog_merckx_scraper_full import (
+    get_pogacar_stats,
+    get_merckx_stats,
+    combine_data,
+)
 import time
-import json
-from pog_v_merckx_ultimate import (
-    scrape_total_wins,
-    scrape_grand_tours,
-    scrape_monuments,
-    scrape_worlds,
+
+app = FastAPI()
+
+# Enable CORS for all origins (for development)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-MERCKX_CACHE = "merckx_data.json"
-POGACAR_CACHE = "pogacar_data.json"
-POGACAR_CACHE_TTL = 60 * 60 * 12  # 12 hours
+# Merckx is static – only scrape once ever
+cached_merckx = get_merckx_stats()
 
-def load_cache(path):
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return json.load(f)
-    return None
+# Pogacar is cached once every 12 hours
+cached_pogacar = None
+last_pogacar_fetch = 0
+POGACAR_CACHE_DURATION = 60 * 60 * 12  # 12 hours
 
-def save_cache(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f)
+@app.get("/api/pog-vs-merckx")
+def get_comparison():
+    global cached_pogacar, last_pogacar_fetch
 
-def get_merckx_data():
-    cached = load_cache(MERCKX_CACHE)
-    if cached:
-        return cached
+    now = time.time()
+    if cached_pogacar is None or (now - last_pogacar_fetch) > POGACAR_CACHE_DURATION:
+        try:
+            cached_pogacar = get_pogacar_stats()
+            last_pogacar_fetch = now
+        except Exception as e:
+            print(f"Error fetching Pogacar stats: {e}")
+            # fallback to last cached_pogacar (can be None)
 
-    data = {
-        "total_wins": scrape_total_wins("eddy-merckx"),
-        "grand_tours": scrape_grand_tours("eddy-merckx"),
-        "monuments": scrape_monuments("eddy-merckx"),
-        "worlds": scrape_worlds("eddy-merckx"),
-    }
-    save_cache(MERCKX_CACHE, data)
-    return data
+    if cached_pogacar is None:
+        return {"error": "Failed to fetch Pogacar data and no cached data available."}
 
-def get_pogacar_data():
-    if os.path.exists(POGACAR_CACHE):
-        mtime = os.path.getmtime(POGACAR_CACHE)
-        if time.time() - mtime < POGACAR_CACHE_TTL:
-            return load_cache(POGACAR_CACHE)
+    return combine_data(cached_pogacar, cached_merckx)
 
-    data = {
-        "total_wins": scrape_total_wins("tadej-pogacar"),
-        "grand_tours": scrape_grand_tours("tadej-pogacar"),
-        "monuments": scrape_monuments("tadej-pogacar"),
-        "worlds": scrape_worlds("tadej-pogacar"),
-    }
-    save_cache(POGACAR_CACHE, data)
-    return data
-
-def get_comparison_data():
-    return {
-        "pogacar": get_pogacar_data(),
-        "merckx": get_merckx_data()
-    }
