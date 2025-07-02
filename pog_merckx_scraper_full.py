@@ -1,6 +1,9 @@
+import os
+import json
 import requests
 from bs4 import BeautifulSoup
-from functools import lru_cache
+
+MERCKX_CACHE_FILE = "merckx_data.json"
 
 def scrape_total_wins(rider_slug):
     url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/wins"
@@ -10,39 +13,7 @@ def scrape_total_wins(rider_slug):
     wins = len(table.find_all("tr")) - 1 if table else 0
     return wins
 
-def scrape_grand_tours(rider_slug):
-    url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/grand-tour-starts"
-    res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
-    soup = BeautifulSoup(res.text, "html.parser")
-    table = soup.find("table", class_="basic")
-
-    starts = wins = podiums = top10s = 0
-    if table:
-        rows = table.find_all("tr")[1:]
-        for row in rows:
-            cols = row.find_all("td")
-            if len(cols) >= 4:
-                result = cols[3].text.strip()
-                starts += 1
-                if result == '1':
-                    wins += 1
-                if result in ['1', '2', '3']:
-                    podiums += 1
-                if result.isdigit() and int(result) <= 10:
-                    top10s += 1
-
-    return {
-        "starts": starts,
-        "wins": wins,
-        "podiums": podiums,
-        "top_10s": top10s,
-        "win_%": round(wins / starts * 100, 1) if starts else 0,
-        "podium_%": round(podiums / starts * 100, 1) if starts else 0,
-        "top10_%": round(top10s / starts * 100, 1) if starts else 0,
-    }
-
-def scrape_monuments(rider_slug):
-    url = f"https://www.procyclingstats.com/rider/{rider_slug}/statistics/top-classic-results"
+def scrape_category(url):
     res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
     soup = BeautifulSoup(res.text, "html.parser")
     table = soup.find("table", class_="basic")
@@ -103,27 +74,31 @@ def scrape_worlds(rider_slug):
         "top10_%": round(top10s / starts * 100, 1) if starts else 0,
     }
 
-# Cache Merckx data
-@lru_cache(maxsize=1)
 def get_merckx_data():
-    return {
-        "total_wins": scrape_total_wins("eddy-merckx"),
-        "grand_tours": scrape_grand_tours("eddy-merckx"),
-        "monuments": scrape_monuments("eddy-merckx"),
-        "worlds": scrape_worlds("eddy-merckx"),
-    }
+    if os.path.exists(MERCKX_CACHE_FILE):
+        with open(MERCKX_CACHE_FILE, "r") as f:
+            return json.load(f)
+    else:
+        data = {
+            "total_wins": scrape_total_wins("eddy-merckx"),
+            "grand_tours": scrape_category("https://www.procyclingstats.com/rider/eddy-merckx/statistics/grand-tour-starts"),
+            "monuments": scrape_category("https://www.procyclingstats.com/rider/eddy-merckx/statistics/top-classic-results"),
+            "worlds": scrape_worlds("eddy-merckx"),
+        }
+        with open(MERCKX_CACHE_FILE, "w") as f:
+            json.dump(data, f)
+        return data
 
-# Compare
-def get_comparison_data():
-    pogacar = {
+def get_pogacar_data():
+    return {
         "total_wins": scrape_total_wins("tadej-pogacar"),
-        "grand_tours": scrape_grand_tours("tadej-pogacar"),
-        "monuments": scrape_monuments("tadej-pogacar"),
+        "grand_tours": scrape_category("https://www.procyclingstats.com/rider/tadej-pogacar/statistics/grand-tour-starts"),
+        "monuments": scrape_category("https://www.procyclingstats.com/rider/tadej-pogacar/statistics/top-classic-results"),
         "worlds": scrape_worlds("tadej-pogacar"),
     }
-    merckx = get_merckx_data()
-    return {
-        "pogacar": pogacar,
-        "merckx": merckx
-    }
 
+def get_comparison_data():
+    return {
+        "pogacar": get_pogacar_data(),
+        "merckx": get_merckx_data()
+    }
