@@ -21,7 +21,7 @@ scraper = CyclingStatsScraper()
 # Cache configuration
 MERCKX_CACHE_FILE = "merckx_complete_data.json"
 POGACAR_CACHE_FILE = "pogacar_complete_data.json"
-POGACAR_CACHE_DURATION = 60 * 60 * 12  # 12 hours
+POGACAR_CACHE_DURATION = 60 * 60 * 24 * 7
 
 # Global cache variables
 cached_merckx_data = None
