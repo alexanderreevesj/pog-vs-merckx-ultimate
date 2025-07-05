@@ -236,3 +236,35 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+# Add this endpoint to main.py after the existing endpoints
+
+@app.get("/api/keep-alive")
+def keep_alive():
+    """Keep the service warm and prevent cold starts"""
+    return {
+        "status": "alive",
+        "timestamp": time.time(),
+        "message": "Service is warm and ready"
+    }
+
+# Also modify the warmup endpoint to be more comprehensive:
+@app.get("/api/warmup")
+def warmup():
+    """Pre-warm all data to prevent cold starts"""
+    try:
+        # Ensure both datasets are loaded
+        pogacar_data = get_pogacar_data()
+        merckx_data = cached_merckx_data
+        
+        # Test the comparison endpoint functionality
+        comparison_ready = pogacar_data is not None and merckx_data is not None
+        
+        return {
+            "status": "warmed" if comparison_ready else "partial",
+            "pogacar_loaded": pogacar_data is not None,
+            "merckx_loaded": merckx_data is not None,
+            "comparison_ready": comparison_ready,
+            "last_update": time.ctime(last_pogacar_fetch_time) if last_pogacar_fetch_time > 0 else "Never"
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
